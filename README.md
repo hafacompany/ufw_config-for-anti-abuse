@@ -17,7 +17,7 @@
 
 1. دریافت اسکریپت:
    ```
-   bash <(curl -s https://github.com/aliamg1356/ufw_config-for-anti-abude/blob/main/hetzner_anti_abuse.sh --ipv4)
+   bash <(curl -s https://raw.githubusercontent.com/aliamg1356/ufw_config-for-anti-abuse/refs/heads/main/hetzner_anti_abuse.sh --ipv4)
    ```
 
 ## 🖥️ راهنمای تعاملی
