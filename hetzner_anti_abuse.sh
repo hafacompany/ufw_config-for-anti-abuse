@@ -69,84 +69,44 @@ ufw deny out from any to 102.230.9.0/24
 ufw deny out from any to 102.233.71.0/24
 ufw deny out from any to 102.236.0.0/16
 
-# ================== NEW PART: Check Listening Ports ==================
-echo -e "\n[+] Checking currently listening ports and their services..."
-listening_ports=$(ss -tulnp | grep -E 'tcp|udp' | awk '{print $5}' | awk -F':' '{print $NF}' | sort -u)
-
-if [ -z "$listening_ports" ]; then
-    echo "No listening ports found."
-else
-    echo -e "\nThe following ports are currently listening:"
-    ss -tulnp | grep -E 'tcp|udp' | awk '{printf "Port: %s (%s) -- Service: %s\n", $5, $1, $7}' | sort -u
-
-    echo -e "\nDo you want to allow any of these listening ports in UFW? [y/n] (default: n):"
-    read allow_listening
-    allow_listening=${allow_listening:-n}  # Default to 'n' if empty
-    allow_listening=$(echo "$allow_listening" | tr '[:upper:]' '[:lower:]')
-
-    if [[ "$allow_listening" == "y" ]]; then
-        for port in $listening_ports; do
-            # Get protocol (tcp/udp) for the port
-            proto=$(ss -tulnp | grep -E ":$port " | head -n 1 | awk '{print $1}')
-            proto=${proto,,}  # Convert to lowercase
-
-            echo -e "\nAllow port $port ($proto)? [y/n] (default: y):"
-            read allow_port
-            allow_port=${allow_port:-y}  # Default to 'y' if empty
-            allow_port=$(echo "$allow_port" | tr '[:upper:]' '[:lower:]')
-
-            if [[ "$allow_port" == "y" ]]; then
-                echo "Allowing $port/$proto in UFW..."
-                ufw allow "$port/$proto"
-            else
-                echo "Skipping port $port."
-            fi
-        done
-    else
-        echo "Skipping listening ports configuration."
-    fi
-fi
-
-# ================== Continue with additional ports ==================
-echo -e "\nDo you want to open additional ports (not listed above)? [y/n] (default: n):"
+# Prompt for additional ports
+echo "Do you want to open additional ports? (y/n)"
 read answer
-answer=${answer:-n}  # Default to 'n' if empty
-answer=$(echo "$answer" | tr '[:upper:]' '[:lower:]')
 
-while [ "$answer" == "y" ]; do
-    echo "Enter the port number to open (e.g., 80 or 443):"
+while [ "$answer" = "y" ] || [ "$answer" = "Y" ]; do
+    echo "Please enter the port number to open (e.g., 80 or 443):"
     read port
     
     # Validate port number
     if [[ $port =~ ^[0-9]+$ ]] && [ $port -ge 1 ] && [ $port -le 65535 ]; then
+        # Ask for TCP or UDP
         echo "Is this port TCP or UDP? [tcp/udp] (default: tcp):"
         read additional_port_type
-        additional_port_type=${additional_port_type:-tcp}
-        additional_port_type=$(echo "$additional_port_type" | tr '[:upper:]' '[:lower:]')
+        additional_port_type=${additional_port_type:-tcp}  # Set default to tcp if empty
+        additional_port_type=$(echo "$additional_port_type" | tr '[:upper:]' '[:lower:]')  # Convert to lowercase
         
+        # Validate port type
         if [[ "$additional_port_type" != "tcp" && "$additional_port_type" != "udp" ]]; then
             echo "Invalid input, using TCP as default."
             additional_port_type="tcp"
         fi
         
         echo "Opening port $port/$additional_port_type..."
-        ufw allow "$port/$additional_port_type"
+        ufw allow $port/$additional_port_type
     else
         echo "Invalid port number."
     fi
     
-    echo -e "\nDo you want to open another port? [y/n] (default: n):"
+    echo "Do you want to open another port? (y/n)"
     read answer
-    answer=${answer:-n}
-    answer=$(echo "$answer" | tr '[:upper:]' '[:lower:]')
 done
 
 # Enable UFW firewall
-echo -e "\nEnabling UFW firewall..."
+echo "Enabling UFW firewall..."
 ufw --force enable
 
 # Show active rules
-echo -e "\nCurrent UFW rules:"
+echo "Current UFW rules:"
 ufw status verbose
 
-echo -e "\nScript completed successfully."
+echo "Script completed successfully."
