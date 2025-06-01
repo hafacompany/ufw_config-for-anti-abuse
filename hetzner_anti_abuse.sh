@@ -8,6 +8,18 @@ if [ "$(id -u)" -ne 0 ]; then
     exit 1
 fi
 
+# Check if UFW is installed
+if ! command -v ufw &> /dev/null; then
+    echo "UFW is not installed. Installing ufw..."
+    apt update && apt install -y ufw
+    if [ $? -ne 0 ]; then
+        echo "Failed to install UFW. Exiting."
+        exit 1
+    fi
+else
+    echo "UFW is already installed."
+fi
+
 # Find SSH port
 ssh_port=$(grep -E "^Port" /etc/ssh/sshd_config | awk '{print $2}')
 if [ -z "$ssh_port" ]; then
@@ -20,8 +32,8 @@ fi
 # Ask if TCP or UDP for SSH port
 echo "Is the SSH port TCP or UDP? [tcp/udp] (default: tcp):"
 read port_type
-port_type=${port_type:-tcp}  # Set default to tcp if empty
-port_type=$(echo "$port_type" | tr '[:upper:]' '[:lower:]')  # Convert to lowercase
+port_type=${port_type:-tcp}
+port_type=$(echo "$port_type" | tr '[:upper:]' '[:lower:]')
 
 # Validate port type
 if [[ "$port_type" != "tcp" && "$port_type" != "udp" ]]; then
@@ -36,8 +48,8 @@ ufw allow $ssh_port/$port_type
 # Ask if SSH connections should be limited
 echo "Do you want to limit the number of SSH connections? [y/n] (default: n):"
 read limit_ssh
-limit_ssh=${limit_ssh:-n}  # Set default to n if empty
-limit_ssh=$(echo "$limit_ssh" | tr '[:upper:]' '[:lower:]')  # Convert to lowercase
+limit_ssh=${limit_ssh:-n}
+limit_ssh=$(echo "$limit_ssh" | tr '[:upper:]' '[:lower:]')
 
 if [[ "$limit_ssh" == "y" ]]; then
     echo "Limiting SSH connections..."
@@ -76,27 +88,24 @@ read answer
 while [ "$answer" = "y" ] || [ "$answer" = "Y" ]; do
     echo "Please enter the port number to open (e.g., 80 or 443):"
     read port
-    
-    # Validate port number
+
     if [[ $port =~ ^[0-9]+$ ]] && [ $port -ge 1 ] && [ $port -le 65535 ]; then
-        # Ask for TCP or UDP
         echo "Is this port TCP or UDP? [tcp/udp] (default: tcp):"
         read additional_port_type
-        additional_port_type=${additional_port_type:-tcp}  # Set default to tcp if empty
-        additional_port_type=$(echo "$additional_port_type" | tr '[:upper:]' '[:lower:]')  # Convert to lowercase
-        
-        # Validate port type
+        additional_port_type=${additional_port_type:-tcp}
+        additional_port_type=$(echo "$additional_port_type" | tr '[:upper:]' '[:lower:]')
+
         if [[ "$additional_port_type" != "tcp" && "$additional_port_type" != "udp" ]]; then
             echo "Invalid input, using TCP as default."
             additional_port_type="tcp"
         fi
-        
+
         echo "Opening port $port/$additional_port_type..."
         ufw allow $port/$additional_port_type
     else
         echo "Invalid port number."
     fi
-    
+
     echo "Do you want to open another port? (y/n)"
     read answer
 done
